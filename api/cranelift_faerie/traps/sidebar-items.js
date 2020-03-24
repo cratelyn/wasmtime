@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["FaerieTrapManifest","Collection of all `FaerieTrapSink`s for the module"],["FaerieTrapSink","Record of the trap sites for a given function"]]});
