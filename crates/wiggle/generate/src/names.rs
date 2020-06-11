@@ -4,18 +4,21 @@ use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote};
 use witx::{AtomType, BuiltinType, Id, Type, TypeRef};
 
-use crate::{lifetimes::LifetimeExt, UserErrorType};
+use crate::{config::NamesConf, lifetimes::LifetimeExt, UserErrorType};
 
 pub struct Names {
     ctx_type: Ident,
     runtime_mod: TokenStream,
+    // DEV KTM
+    _names_conf: NamesConf,
 }
 
 impl Names {
-    pub fn new(ctx_type: &Ident, runtime_mod: TokenStream) -> Names {
+    pub fn new(ctx_type: &Ident, runtime_mod: TokenStream, names_conf: NamesConf) -> Names {
         Names {
             ctx_type: ctx_type.clone(),
             runtime_mod,
+            _names_conf: names_conf,
         }
     }
 
@@ -305,9 +308,9 @@ mod escaping {
     /// This will only return `Some(_)` if the given witx identifier *is* `2big`, otherwise this
     /// function will return `None`.
     ///
-    /// This functionality is a short-term fix that keeps WASI working. Instead of expanding these sort of special cases,
-    /// we should replace this function by having the user provide a mapping of witx identifiers to Rust identifiers in the
-    /// arguments to the macro.
+    /// This functionality is a short-term fix that keeps WASI working. Instead of expanding these
+    /// sort of special cases, we should replace this function by having the user provide a mapping
+    /// of witx identifiers to Rust identifiers in the arguments to the macro.
     ///
     /// [err]: https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#-errno-enumu16
     pub fn handle_2big_enum_variant(id: &Id) -> Option<Ident> {

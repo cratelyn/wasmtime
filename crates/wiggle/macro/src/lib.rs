@@ -96,7 +96,7 @@ pub fn from_witx(args: TokenStream) -> TokenStream {
     );
 
     let doc = config.load_document();
-    let names = wiggle_generate::Names::new(&config.ctx.name, quote!(wiggle));
+    let names = wiggle_generate::Names::new(&config.ctx.name, quote!(wiggle), config.names);
 
     let error_transform = wiggle_generate::ErrorTransform::new(&config.errors, &doc)
         .expect("validating error transform");

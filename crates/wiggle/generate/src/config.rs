@@ -18,6 +18,7 @@ pub struct Config {
     pub witx: WitxConf,
     pub ctx: CtxConf,
     pub errors: ErrorConf,
+    pub names: NamesConf,
 }
 
 #[derive(Debug, Clone)]
@@ -25,6 +26,7 @@ pub enum ConfigField {
     Witx(WitxConf),
     Ctx(CtxConf),
     Error(ErrorConf),
+    Names(NamesConf),
 }
 
 mod kw {
@@ -32,6 +34,7 @@ mod kw {
     syn::custom_keyword!(witx_literal);
     syn::custom_keyword!(ctx);
     syn::custom_keyword!(errors);
+    syn::custom_keyword!(names);
 }
 
 impl Parse for ConfigField {
@@ -53,6 +56,10 @@ impl Parse for ConfigField {
             input.parse::<kw::errors>()?;
             input.parse::<Token![:]>()?;
             Ok(ConfigField::Error(input.parse()?))
+        } else if lookahead.peek(kw::names) {
+            input.parse::<kw::names>()?;
+            input.parse::<Token![:]>()?;
+            Ok(ConfigField::Names(input.parse()?))
         } else {
             Err(lookahead.error())
         }
@@ -64,6 +71,7 @@ impl Config {
         let mut witx = None;
         let mut ctx = None;
         let mut errors = None;
+        let mut names = None;
         for f in fields {
             match f {
                 ConfigField::Witx(c) => {
@@ -84,6 +92,12 @@ impl Config {
                     }
                     errors = Some(c);
                 }
+                ConfigField::Names(c) => {
+                    if names.is_some() {
+                        return Err(Error::new(err_loc, "duplicate `names` field"));
+                    }
+                    names = Some(c);
+                }
             }
         }
         Ok(Config {
@@ -94,6 +108,7 @@ impl Config {
                 .take()
                 .ok_or_else(|| Error::new(err_loc, "`ctx` field required"))?,
             errors: errors.take().unwrap_or_default(),
+            names: names.take().unwrap_or_default(),
         })
     }
 
@@ -299,6 +314,56 @@ impl Parse for ErrorConfField {
             abi_error,
             rich_error,
             err_loc,
+        })
+    }
+}
+
+#[derive(Clone, Default, Debug)]
+/// Map from witx identifiers to Rust identifiers.
+pub struct NamesConf(HashMap<String, NamesConfField>);
+
+impl Parse for NamesConf {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let content;
+        let _ = braced!(content in input);
+        let items: Punctuated<NamesConfField, Token![,]> =
+            content.parse_terminated(Parse::parse)?;
+        let mut m = HashMap::new();
+        for i in items {
+            match m.insert(i.witx_ident.value(), i.clone()) {
+                None => {}
+                Some(prev_def) => {
+                    return Err(Error::new(
+                        i.name_loc,
+                        format!(
+                        "duplicate definition of name mapping for {:?}: previously defined at {:?}",
+                        i.witx_ident, prev_def.name_loc,
+                    ),
+                    ))
+                }
+            }
+        }
+        Ok(Self(m))
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct NamesConfField {
+    pub witx_ident: LitStr,
+    pub rust_ident: Ident,
+    pub name_loc: Span,
+}
+
+impl Parse for NamesConfField {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let name_loc = input.span();
+        let witx_ident = input.parse::<LitStr>()?;
+        let _arrow: Token![=>] = input.parse()?;
+        let rust_ident = input.parse::<Ident>()?;
+        Ok(Self {
+            witx_ident,
+            rust_ident,
+            name_loc,
         })
     }
 }
